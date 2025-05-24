@@ -130,7 +130,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         ThrowUtill.throwIf(user == null || user.getId() < 0, ErrorCode.NOT_LOGIN_ERROR, "用户未登录");
         //缓存没有，从数据库查
         user = this.getById(user.getId());
-        ThrowUtill.throwIf(user == null , ErrorCode.NOT_LOGIN_ERROR, "");
+        ThrowUtill.throwIf(user == null , ErrorCode.NOT_LOGIN_ERROR, "用户不存在");
         return user;
     }
 

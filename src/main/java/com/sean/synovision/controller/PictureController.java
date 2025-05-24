@@ -71,6 +71,15 @@ public class PictureController {
         return ResultUtils.success(pictureVo);
     }
 
+    @PostMapping("/upload/url")
+    public BaseResponse<PictureVo> uploadByUrl(@RequestBody PictureUploadRequest pictureUploadRequest,
+            HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        String fileUrl = pictureUploadRequest.getFileUrl();
+        PictureVo pictureVo = pictureService.uploadPicture(fileUrl, pictureUploadRequest, loginUser);
+        return ResultUtils.success(pictureVo);
+    }
+
     //region 增删改查
     @PostMapping("/delete")
     public BaseResponse<Boolean> deletePicture(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
@@ -137,7 +146,7 @@ public class PictureController {
         Page<Picture> picturePage = pictureService.listPicturePage(pictureQueryRequest);
         return ResultUtils.success(picturePage);
     }
-    // todo 前端主页，如果选择多个tag 就会显示获取数据失败。
+
     @PostMapping("/list/vo")
     public BaseResponse<Page<PictureVo>> listPictureVo(@RequestBody PictureQueryRequest pictureQueryRequest, HttpServletRequest request) {
         Page<PictureVo> pictureVoPage = pictureService.listPictureVoPage(pictureQueryRequest, request);

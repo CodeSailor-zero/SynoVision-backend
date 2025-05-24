@@ -7,12 +7,13 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.sean.synovision.common.BaseResponse;
 import com.sean.synovision.costant.UserConstant;
 import com.sean.synovision.exception.BussinessException;
 import com.sean.synovision.exception.ErrorCode;
-import com.sean.synovision.exception.ResultUtils;
-import com.sean.synovision.manager.FileManager;
+import com.sean.synovision.manager.upload.FileManager;
+import com.sean.synovision.manager.upload.FileUploadPictureTemplateImpl;
+import com.sean.synovision.manager.upload.UploadPictureTemplate;
+import com.sean.synovision.manager.upload.UrlUploadPictureTemplateImpl;
 import com.sean.synovision.model.dto.file.UploadPictureResult;
 import com.sean.synovision.model.dto.picture.PictureQueryRequest;
 import com.sean.synovision.model.dto.picture.PictureReviewRequest;
@@ -34,7 +35,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -49,8 +49,12 @@ import java.util.stream.Collectors;
 public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     implements PictureService{
 
+
     @Resource
-    private FileManager fileManager;
+    private FileUploadPictureTemplateImpl fileUploadPictureTemplate;
+
+    @Resource
+    private UrlUploadPictureTemplateImpl urlUploadPictureTemplate;
 
     @Resource
     private UserService userService;
@@ -71,8 +75,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     }
 
 
+    //todo 上传图片太慢了
     @Override
-    public PictureVo uploadPicture(MultipartFile multipartFile, PictureUploadRequest pictureUploadRequest, User user) {
+    public PictureVo uploadPicture(Object inputSource, PictureUploadRequest pictureUploadRequest, User user) {
         ThrowUtill.throwIf(user == null, ErrorCode.NOT_LOGIN_ERROR);
         //判断是否为新增
         Long pictureId = null;
@@ -89,7 +94,11 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         }
         //上传图片
         final String FILE_PREFIX = String.format("/public/%s",user.getId());
-        UploadPictureResult uploadPictureResult = fileManager.uploadFile(multipartFile, FILE_PREFIX);
+        UploadPictureTemplate uploadPictureTemplate = fileUploadPictureTemplate;
+        if (inputSource instanceof String) {
+            uploadPictureTemplate = urlUploadPictureTemplate;
+        }
+        UploadPictureResult uploadPictureResult = uploadPictureTemplate.uploadFile(inputSource, FILE_PREFIX);
         // 保存图片信息到数据库
         Picture picture = new Picture();
         picture.setUrl(uploadPictureResult.getUrl());

@@ -29,7 +29,7 @@ public interface PictureService extends IService<Picture> {
      * @param user 当前用户
      * @return 图片的封装类
      */
-    PictureVo uploadPicture(MultipartFile multipartFile,
+    PictureVo uploadPicture(Object multipartFile,
                             PictureUploadRequest pictureUploadRequest,
                             User user
     );
