@@ -5,6 +5,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 
+
 @EnableAspectJAutoProxy(exposeProxy = true) //暴露代理
 @SpringBootApplication
 @MapperScan("com.sean.synovision.mapper")

@@ -43,3 +43,15 @@ create table synovision.picture(
     INDEX idx_userId (userId)
 ) comment '图片表' collate = utf8mb4_unicode_ci;
 
+-- tag表
+create table synovision.tag(
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT 'id',
+    tagName VARCHAR(64) NOT NULL UNIQUE COMMENT '标签名称',
+    tagCount INT NOT NULL DEFAULT 0 COMMENT '标签出现次数',
+    createTime datetime not null default current_timestamp comment '创建时间',
+    editTime datetime not null default current_timestamp comment '编辑时间',
+    updateTime datetime not null default current_timestamp on update current_timestamp comment '更新时间',
+    isDelete tinyint not null default 0 comment '是否删除',
+    INDEX idx_tagName_tagCount(tagName,tagCount)
+) comment 'tag表' collate = utf8mb4_unicode_ci;
+

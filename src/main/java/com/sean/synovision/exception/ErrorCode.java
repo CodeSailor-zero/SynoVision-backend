@@ -16,7 +16,10 @@ public enum ErrorCode {
     FORBIDDEN_ERROR(40300, "禁止访问"),
     SYSTEM_ERROR(50000, "系统内部异常"),
     OPERATION_ERROR(50001, "操作失败"),
-    TOO_MANY_REQUEST(42900, "操作过于频繁");
+    TOO_MANY_REQUEST(42900, "操作过于频繁"),
+
+    //图片模块
+    PICTURE_NOT_EXIST(60000, "图片不存在");
 
     /**
      * 状态码

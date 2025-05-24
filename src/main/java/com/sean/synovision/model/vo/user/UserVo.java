@@ -1,4 +1,4 @@
-package com.sean.synovision.model.vo;
+package com.sean.synovision.model.vo.user;
 
 import lombok.Data;
 

@@ -8,8 +8,8 @@ import com.sean.synovision.exception.ErrorCode;
 import com.sean.synovision.exception.ResultUtils;
 import com.sean.synovision.model.dto.user.*;
 import com.sean.synovision.model.entity.User;
-import com.sean.synovision.model.vo.LoginUserVo;
-import com.sean.synovision.model.vo.UserVo;
+import com.sean.synovision.model.vo.user.LoginUserVo;
+import com.sean.synovision.model.vo.user.UserVo;
 import com.sean.synovision.service.UserService;
 import com.sean.synovision.utill.ThrowUtill;
 import org.springframework.beans.BeanUtils;
@@ -32,6 +32,7 @@ public class userController {
     @Resource
     private UserService userService;
 
+    // region 业务
     @PostMapping("/register")
     public BaseResponse<Long> userRegister(@RequestBody UserRegisterRequest userRegisterRequest) {
         ThrowUtill.throwIf(userRegisterRequest == null, ErrorCode.PARAMS_ERROR);
@@ -59,13 +60,9 @@ public class userController {
         session.removeAttribute(UserConstant.user_login_state);
         return ResultUtils.success(true);
     }
-    @GetMapping("/get/login")
-    public BaseResponse<LoginUserVo> getLoginUser(HttpServletRequest request) {
-        User loginUser = userService.getLoginUser(request);
-        LoginUserVo loginUserVo = userService.getLoginUserVo(loginUser);
-        return ResultUtils.success(loginUserVo);
-    }
+    // endregion
 
+    //region 增删改查
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     @PostMapping("/add")
     public BaseResponse<Long> addUser(@RequestBody UserAddRequest userAddRequest) {
@@ -108,6 +105,12 @@ public class userController {
         UserVo userVo = userService.getUserVo(user);
         return ResultUtils.success(userVo);
     }
+    @GetMapping("/get/login")
+    public BaseResponse<LoginUserVo> getLoginUser(HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        LoginUserVo loginUserVo = userService.getLoginUserVo(loginUser);
+        return ResultUtils.success(loginUserVo);
+    }
     @GetMapping("/delete/{id}")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> deleteUserById(@PathVariable("id") Long id) {
@@ -126,4 +129,5 @@ public class userController {
         ThrowUtill.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(result);
     }
+    // endregion
 }

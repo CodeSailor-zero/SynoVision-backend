@@ -4,8 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.sean.synovision.model.dto.user.UserQueryRequest;
 import com.sean.synovision.model.entity.User;
-import com.sean.synovision.model.vo.LoginUserVo;
-import com.sean.synovision.model.vo.UserVo;
+import com.sean.synovision.model.vo.user.LoginUserVo;
+import com.sean.synovision.model.vo.user.UserVo;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -35,4 +35,7 @@ public interface UserService extends IService<User> {
     User getLoginUser(HttpServletRequest request);
 
     QueryWrapper<User> getQueryWrapper(UserQueryRequest userQueryRequest);
+
+    boolean isAdmin(HttpServletRequest request);
+    boolean isAdmin(User user);
 }

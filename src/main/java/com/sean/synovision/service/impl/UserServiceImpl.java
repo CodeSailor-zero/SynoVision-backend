@@ -11,14 +11,13 @@ import com.sean.synovision.mapper.UserMapper;
 import com.sean.synovision.model.dto.user.UserQueryRequest;
 import com.sean.synovision.model.entity.User;
 import com.sean.synovision.model.enums.UserRoleEnum;
-import com.sean.synovision.model.vo.LoginUserVo;
-import com.sean.synovision.model.vo.UserVo;
+import com.sean.synovision.model.vo.user.LoginUserVo;
+import com.sean.synovision.model.vo.user.UserVo;
 import com.sean.synovision.service.UserService;
 import com.sean.synovision.utill.MD5Utill;
 import com.sean.synovision.utill.ThrowUtill;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
-import org.springframework.util.CollectionUtils;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -158,6 +157,22 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         userQueryWrapper.eq(StrUtil.isNotBlank(userProfile), "userProfile", userProfile);
         userQueryWrapper.orderBy(StrUtil.isNotEmpty(sortOrder), sortOrder.equals("ascend"),sortField);
         return userQueryWrapper;
+    }
+
+    @Override
+    public boolean isAdmin(HttpServletRequest request) {
+        User loginUser = getLoginUser(request);
+        String userRole = loginUser.getUserRole();
+        return UserConstant.DEFALUT_ROLE.equals(userRole);
+    }
+
+    @Override
+    public boolean isAdmin(User user) {
+        ThrowUtill.throwIf(user == null, ErrorCode.PARAMS_ERROR, "用户不存在");
+        if (!UserConstant.ADMIN_ROLE.equals(user.getUserRole())) {
+            return false;
+        }
+        return true;
     }
 }
 

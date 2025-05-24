@@ -14,20 +14,20 @@ import java.util.stream.Collectors;
  * @Date 2025/59/20
  */
 @Getter
-public enum UserRoleEnum {
+public enum TagTypeEnum {
 
-    USER("用户","user"),
-    ADMIN("管理员","admin");
+    SYSTEM("系统创建","system"),
+    user("用户创建","user");
     private final String text;
     private final String value;
 
-     UserRoleEnum(String text, String value) {
+     TagTypeEnum(String text, String value) {
         this.text = text;
         this.value = value;
      }
 
-     public static final Map<String,UserRoleEnum> ENU_MAP = Arrays.stream(values())
-             .collect(Collectors.toMap(UserRoleEnum::getValue, Function.identity()));
+     public static final Map<String, TagTypeEnum> ENU_MAP = Arrays.stream(values())
+             .collect(Collectors.toMap(TagTypeEnum::getValue, Function.identity()));
 
     /**
      * 获取值列表
@@ -44,7 +44,7 @@ public enum UserRoleEnum {
      * @param value
      * @return
      */
-    public static UserRoleEnum getEnumByValue(String value) {
+    public static TagTypeEnum getEnumByValue(String value) {
         if (ObjectUtil.isEmpty(value)) {
             return null;
         }
