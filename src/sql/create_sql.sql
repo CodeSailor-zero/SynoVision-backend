@@ -55,3 +55,11 @@ create table synovision.tag(
     INDEX idx_tagName_tagCount(tagName,tagCount)
 ) comment 'tag表' collate = utf8mb4_unicode_ci;
 
+-- 在图片表添加审核字段
+alter table synovision.picture
+    add column reviewStatus int not null default 0 comment '是否审核，0 - 待审核，1 - 通过，2 - 未通过',
+    add column reviewMessage datetime null comment '审核信息',
+    add column reviewId bigint null comment '审核人id',
+    add column reviewTime datetime null comment '审核时间';
+
+create index idx_reviewStatus on synovision.picture(reviewStatus);

@@ -12,14 +12,12 @@ import com.sean.synovision.costant.UserConstant;
 import com.sean.synovision.exception.BussinessException;
 import com.sean.synovision.exception.ErrorCode;
 import com.sean.synovision.exception.ResultUtils;
-import com.sean.synovision.model.dto.picture.PictureEditRequest;
-import com.sean.synovision.model.dto.picture.PictureQueryRequest;
-import com.sean.synovision.model.dto.picture.PictureUpdateRequest;
-import com.sean.synovision.model.dto.picture.PictureUploadRequest;
+import com.sean.synovision.model.dto.picture.*;
 import com.sean.synovision.model.dto.tag.TagQueryRequest;
 import com.sean.synovision.model.entity.Picture;
 import com.sean.synovision.model.entity.Tag;
 import com.sean.synovision.model.entity.User;
+import com.sean.synovision.model.enums.PictureReviewEnum;
 import com.sean.synovision.model.vo.picture.PictureTagCategeoy;
 import com.sean.synovision.model.vo.picture.PictureVo;
 import com.sean.synovision.model.vo.tag.TagVo;
@@ -62,7 +60,7 @@ public class PictureController {
     private TagService tagService;
 
 
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+//    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     @PostMapping("/upload")
     public BaseResponse<PictureVo> upload(
             @RequestPart("file") MultipartFile file,
@@ -96,7 +94,7 @@ public class PictureController {
 
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     @PostMapping("/update")
-    public BaseResponse<Boolean> updatePicture(@RequestBody PictureUpdateRequest pictureUpdateRequest) {
+    public BaseResponse<Boolean> updatePicture(@RequestBody PictureUpdateRequest pictureUpdateRequest,HttpServletRequest request) {
         ThrowUtill.throwIf(pictureUpdateRequest == null || pictureUpdateRequest.getId() < 0, ErrorCode.PARAMS_ERROR);
         Picture picture = new Picture();
         BeanUtils.copyProperties(pictureUpdateRequest, picture);
@@ -105,6 +103,9 @@ public class PictureController {
         pictureService.vaildPicture(picture);
         Picture oldPicture = pictureService.getById(picture.getId());
         ThrowUtill.throwIf(oldPicture == null, ErrorCode.PARAMS_ERROR, "当前图片不存在");
+        //补充图片审核校验参数
+        User loginUser = userService.getLoginUser(request);
+        pictureService.fullPictureReviewPramas(picture,loginUser);
         boolean result = pictureService.updateById(picture);
         ThrowUtill.throwIf(result, ErrorCode.OPERATION_ERROR, "图片更新失败");
         return ResultUtils.success(result);
@@ -133,49 +134,13 @@ public class PictureController {
     @PostMapping("/list")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Page<Picture>> listPicture(@RequestBody PictureQueryRequest pictureQueryRequest) {
-        int current = pictureQueryRequest.getCurrent();
-        int pageSize = pictureQueryRequest.getPageSize();
-        Page<Picture> picturePage = pictureService.page(new Page<>(current, pageSize),
-                pictureService.getQueryWrapper(pictureQueryRequest));
+        Page<Picture> picturePage = pictureService.listPicturePage(pictureQueryRequest);
         return ResultUtils.success(picturePage);
     }
     // todo 前端主页，如果选择多个tag 就会显示获取数据失败。
     @PostMapping("/list/vo")
-public BaseResponse<Page<PictureVo>> listPictureVo(@RequestBody PictureQueryRequest pictureQueryRequest, HttpServletRequest request) {
-        // 1. redisson 分布式锁
-        // 2. redisson 限流器【令牌】
-        // 3. 缓存 √
-
-        // current  size            start   end
-        //   1       10          =>  0       9
-        //   2       10          =>  10      19
-        //   3       10          =>  20      29
-        //   4       10          =>  30      39
-        //   c       s           => (c-1)*s   cs-1
-        User loginUser = userService.getLoginUser(request);
-        //先查询redis缓存
-        int current = pictureQueryRequest.getCurrent();
-        int pageSize = pictureQueryRequest.getPageSize();
-        long start = (long) (current - 1) * pageSize;
-        long end = (long) current * pageSize - 1;
-        ListOperations listOperations = redisTemplate.opsForList();
-        List pageList = listOperations.range("key", start, end);
-        if (CollectionUtil.isNotEmpty(pageList)) {
-            Page<PictureVo> pictureVoPage = new Page<>(current,pageSize);
-            pictureVoPage.setRecords((List<PictureVo>) pageList.get(0));
-            return ResultUtils.success(pictureVoPage);
-        }
-
-        BaseResponse<Page<Picture>> pictureResponse = listPicture(pictureQueryRequest);
-        Page<Picture> pictures = pictureResponse.getData();
-        Page<PictureVo> pictureVoPage = pictureService.getPictureVoPage(pictures,request);
-        String Key = "PictureVo:" + current + ":" + loginUser.getId();
-        // 为了防止前端频繁进行查询，同时秒数小是为了防止数据不一致问题
-        listOperations.rightPush(Key,pictureVoPage);
-        redisTemplate.expire(Key, 10, TimeUnit.SECONDS);
-
-        //进行 tag 的统计
-
+    public BaseResponse<Page<PictureVo>> listPictureVo(@RequestBody PictureQueryRequest pictureQueryRequest, HttpServletRequest request) {
+        Page<PictureVo> pictureVoPage = pictureService.listPictureVoPage(pictureQueryRequest, request);
         return ResultUtils.success(pictureVoPage);
     }
 
@@ -188,6 +153,9 @@ public BaseResponse<Page<PictureVo>> listPictureVo(@RequestBody PictureQueryRequ
         List<String> tags = pictureEditRequest.getTags();
         picture.setTags(JSONUtil.toJsonStr(tags));
         picture.setEditTime(new Date());
+        //补充图片审核校验参数
+        pictureService.fullPictureReviewPramas(picture,loginUser);
+        //picture 参数校验
         pictureService.vaildPicture(picture);
         Picture oldPicture = pictureService.getById(picture.getId());
         ThrowUtill.throwIf(oldPicture == null, ErrorCode.PARAMS_ERROR, "当前图片不存在");
@@ -211,5 +179,16 @@ public BaseResponse<Page<PictureVo>> listPictureVo(@RequestBody PictureQueryRequ
         pictureTagCategeoy.setTagList(tagNameList);
         pictureTagCategeoy.setCategeoyList(categeoyList);
         return ResultUtils.success(pictureTagCategeoy);
+    }
+
+    @PostMapping("/review")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> doPictureReview(@RequestBody PictureReviewRequest pictureReviewRequest,
+                                               HttpServletRequest request) {
+        // 1. 参数校验
+        ThrowUtill.throwIf(pictureReviewRequest == null || pictureReviewRequest.getId() < 0, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        pictureService.doPictureReview(pictureReviewRequest, loginUser);
+        return ResultUtils.success(true);
     }
 }

@@ -36,8 +36,6 @@ public class CosConfig {
         // 这里建议设置使用 https 协议
         // 从 5.6.54 版本开始，默认使用了 https
         clientConfig.setHttpProtocol(HttpProtocol.https);
-        System.out.println("secretId：" + secretId);
-        System.out.println("secretKey：" + secretKey);
         // 3 生成 cos 客户端。
         return new COSClient(cred, clientConfig);
     }
