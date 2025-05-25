@@ -1,7 +1,6 @@
 package com.sean.synovision.manager;
 
 import com.qcloud.cos.COSClient;
-import com.qcloud.cos.demo.PicOperationDemo;
 import com.qcloud.cos.exception.CosClientException;
 import com.qcloud.cos.exception.CosServiceException;
 import com.qcloud.cos.model.COSObject;

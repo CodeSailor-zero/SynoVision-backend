@@ -4,9 +4,13 @@ import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.NumberUtil;
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.http.*;
+import cn.hutool.http.HttpResponse;
+import cn.hutool.http.HttpStatus;
+import cn.hutool.http.HttpUtil;
+import cn.hutool.http.Method;
 import com.qcloud.cos.COSClient;
-import com.qcloud.cos.model.*;
+import com.qcloud.cos.model.GeneratePresignedUrlRequest;
+import com.qcloud.cos.model.PutObjectResult;
 import com.qcloud.cos.model.ciModel.persistence.ImageInfo;
 import com.sean.synovision.config.CosConfig;
 import com.sean.synovision.exception.BussinessException;
@@ -15,7 +19,6 @@ import com.sean.synovision.manager.CosManager;
 import com.sean.synovision.model.dto.file.UploadPictureResult;
 import com.sean.synovision.utill.ThrowUtill;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
@@ -32,7 +35,7 @@ import java.util.UUID;
  * @Date 2025/04/21
  */
 @Slf4j
-@Service
+//@Service
 @Deprecated
 public class FileManager {
     @Resource

@@ -1,9 +1,7 @@
 package com.sean.synovision.controller;
 
 
-import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.json.JSONUtil;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sean.synovision.annotation.AuthCheck;
 import com.sean.synovision.common.BaseResponse;
@@ -13,20 +11,15 @@ import com.sean.synovision.exception.BussinessException;
 import com.sean.synovision.exception.ErrorCode;
 import com.sean.synovision.exception.ResultUtils;
 import com.sean.synovision.model.dto.picture.*;
-import com.sean.synovision.model.dto.tag.TagQueryRequest;
 import com.sean.synovision.model.entity.Picture;
-import com.sean.synovision.model.entity.Tag;
 import com.sean.synovision.model.entity.User;
-import com.sean.synovision.model.enums.PictureReviewEnum;
 import com.sean.synovision.model.vo.picture.PictureTagCategeoy;
 import com.sean.synovision.model.vo.picture.PictureVo;
-import com.sean.synovision.model.vo.tag.TagVo;
 import com.sean.synovision.service.PictureService;
 import com.sean.synovision.service.TagService;
 import com.sean.synovision.service.UserService;
 import com.sean.synovision.utill.ThrowUtill;
 import org.springframework.beans.BeanUtils;
-import org.springframework.data.redis.core.ListOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -36,8 +29,6 @@ import javax.servlet.http.HttpServletRequest;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 /**
  * @author sean
@@ -59,7 +50,7 @@ public class PictureController {
     @Resource
     private TagService tagService;
 
-
+    // region 上传图片
 //    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     @PostMapping("/upload")
     public BaseResponse<PictureVo> upload(
@@ -79,6 +70,18 @@ public class PictureController {
         PictureVo pictureVo = pictureService.uploadPicture(fileUrl, pictureUploadRequest, loginUser);
         return ResultUtils.success(pictureVo);
     }
+
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @PostMapping("/upload/batch")
+    public BaseResponse<Integer> uploadByBatch(@RequestBody PictureUploadByBatchRequest pictureUploadByBatchRequest,
+                                               HttpServletRequest request) {
+        ThrowUtill.throwIf(pictureUploadByBatchRequest == null, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        int uploadCount = pictureService.uploadPictureBatch(pictureUploadByBatchRequest, loginUser);
+        return ResultUtils.success(uploadCount);
+    }
+
+    // endregion
 
     //region 增删改查
     @PostMapping("/delete")

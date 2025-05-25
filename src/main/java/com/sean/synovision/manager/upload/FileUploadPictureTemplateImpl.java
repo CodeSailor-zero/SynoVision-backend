@@ -1,6 +1,5 @@
 package com.sean.synovision.manager.upload;
 
-import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
 import com.sean.synovision.exception.ErrorCode;
 import com.sean.synovision.utill.ThrowUtill;
@@ -10,9 +9,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * @author sean

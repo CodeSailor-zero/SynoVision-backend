@@ -1,6 +1,5 @@
 package com.sean.synovision.model.dto.picture;
 
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.sean.synovision.common.PageResult;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

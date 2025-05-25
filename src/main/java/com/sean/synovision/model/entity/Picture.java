@@ -1,11 +1,10 @@
 package com.sean.synovision.model.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import lombok.Data;
 
 import java.io.Serializable;
 import java.util.Date;
-import lombok.Data;
-import org.springframework.beans.factory.annotation.Value;
 
 /**
  * 图片表

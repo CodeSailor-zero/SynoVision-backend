@@ -1,9 +1,6 @@
 package com.sean.synovision.model.vo.picture;
 
 import cn.hutool.json.JSONUtil;
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
 import com.sean.synovision.model.entity.Picture;
 import com.sean.synovision.model.vo.user.UserVo;
 import lombok.Data;

@@ -1,15 +1,9 @@
 package com.sean.synovision.model.vo.tag;
 
 import cn.hutool.json.JSONUtil;
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableLogic;
-import com.sean.synovision.model.entity.Picture;
 import com.sean.synovision.model.entity.Tag;
-import com.sean.synovision.model.vo.picture.PictureVo;
 import com.sean.synovision.model.vo.user.UserVo;
 import lombok.Data;
-import lombok.Getter;
 import org.springframework.beans.BeanUtils;
 
 import java.util.Date;

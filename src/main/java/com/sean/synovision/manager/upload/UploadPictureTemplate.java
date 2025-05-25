@@ -13,7 +13,6 @@ import com.sean.synovision.exception.ErrorCode;
 import com.sean.synovision.manager.CosManager;
 import com.sean.synovision.model.dto.file.UploadPictureResult;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import java.io.File;

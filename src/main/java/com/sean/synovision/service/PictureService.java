@@ -2,14 +2,14 @@ package com.sean.synovision.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.IService;
 import com.sean.synovision.model.dto.picture.PictureQueryRequest;
 import com.sean.synovision.model.dto.picture.PictureReviewRequest;
+import com.sean.synovision.model.dto.picture.PictureUploadByBatchRequest;
 import com.sean.synovision.model.dto.picture.PictureUploadRequest;
 import com.sean.synovision.model.entity.Picture;
-import com.baomidou.mybatisplus.extension.service.IService;
 import com.sean.synovision.model.entity.User;
 import com.sean.synovision.model.vo.picture.PictureVo;
-import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -33,6 +33,14 @@ public interface PictureService extends IService<Picture> {
                             PictureUploadRequest pictureUploadRequest,
                             User user
     );
+
+    /**
+     * 批量上传图片
+     * @param upload
+     * @param user
+     * @return
+     */
+    Integer uploadPictureBatch(PictureUploadByBatchRequest upload,User user);
 
     /**
      * 图片审核功能

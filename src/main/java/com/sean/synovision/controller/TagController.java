@@ -12,17 +12,16 @@ import com.sean.synovision.model.dto.tag.TagQueryRequest;
 import com.sean.synovision.model.dto.tag.TagUpdateRequest;
 import com.sean.synovision.model.entity.Tag;
 import com.sean.synovision.model.entity.User;
-import com.sean.synovision.model.vo.picture.PictureTagCategeoy;
-import com.sean.synovision.model.vo.tag.TagVo;
 import com.sean.synovision.service.TagService;
 import com.sean.synovision.service.UserService;
 import com.sean.synovision.utill.ThrowUtill;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * @author sean
