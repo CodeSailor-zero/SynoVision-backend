@@ -3,10 +3,15 @@ package com.sean.synovision.service.impl;
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.crypto.digest.DigestUtil;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.sean.synovision.costant.UserConstant;
 import com.sean.synovision.exception.BussinessException;
 import com.sean.synovision.exception.ErrorCode;
@@ -35,11 +40,15 @@ import org.jsoup.select.Elements;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.redis.core.ListOperations;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.stereotype.Service;
+import org.springframework.util.DigestUtils;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -66,7 +75,13 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     private UserService userService;
 
     @Resource
-    private RedisTemplate redisTemplate;
+    private StringRedisTemplate stringRedisTemplate;
+
+    private final Cache<String, String> LOCAL_CACHE = Caffeine.newBuilder()
+            .initialCapacity(1024)
+            .maximumSize(10_000L)
+            .expireAfterWrite(Duration.ofSeconds(5))//原来是分钟单位
+            .build();
 
     @Override
     public void vaildPicture(Picture picture) {
@@ -113,6 +128,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 
         Picture picture = new Picture();
         picture.setUrl(uploadPictureResult.getUrl());
+        picture.setThumbnailUrl(uploadPictureResult.getThumbnailUrl());
         String picName = uploadPictureResult.getPicName();
         if (namePrefix != null) {
             picName = namePrefix + picName;
@@ -241,32 +257,36 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         // 2. redisson 限流器【令牌】
         // 3. 缓存 √
 
-        // current  size            start   end
-        //   1       10          =>  0       9
-        //   2       10          =>  10      19
-        //   3       10          =>  20      29
-        //   4       10          =>  30      39
-        //   c       s           => (c-1)*s   cs-1
-        //先查询redis缓存，如果存在则直接返回
-        int current = pictureQueryRequest.getCurrent();
-        int pageSize = pictureQueryRequest.getPageSize();
-        long start = (long) (current - 1) * pageSize;
-        long end = (long) current * pageSize - 1;
-        ListOperations listOperations = redisTemplate.opsForList();
-        List pageList = listOperations.range("key", start, end);
-        if (CollectionUtil.isNotEmpty(pageList)) {
-            Page<PictureVo> pictureVoPage = new Page<>(current, pageSize);
-            pictureVoPage.setRecords((List<PictureVo>) pageList.get(0));
-            return pictureVoPage;
+        //1.查询redis缓存前，查询本地缓存
+        String queryCondition = JSONUtil.toJsonStr(pictureQueryRequest);
+        String localKey = DigestUtils.md5DigestAsHex(queryCondition.getBytes());
+        String localCacheData = LOCAL_CACHE.getIfPresent(localKey);
+        if (StrUtil.isNotBlank(localCacheData)) {
+            return JSONUtil.toBean(localCacheData, Page.class);
         }
+
+        // 2.先查询redis缓存，如果存在则直接返回
+        String redisKey = String.format("SynoVision:listPictureVoPage:%s", localKey);
+        ValueOperations<String, String> stringStringValueOperations = stringRedisTemplate.opsForValue();
+        String cachedValue = stringStringValueOperations.get(redisKey);
+        if (StrUtil.isNotBlank(cachedValue)) {
+            return JSONUtil.toBean(cachedValue, Page.class);
+        }
+
+        //3.查询数据库
         //只允许查询已经通过的照片
         pictureQueryRequest.setReviewStatus(PictureReviewEnum.PASS.getValue());
         Page<Picture> picturePage = listPicturePage(pictureQueryRequest);
         Page<PictureVo> pictureVoPage = this.getPictureVoPage(picturePage, request);
-        String Key = "PictureVo:" + current + ":" + loginUser.getId();
-        // 为了防止前端频繁进行查询，同时秒数小是为了防止数据不一致问题
-        listOperations.rightPush(Key, pictureVoPage);
-        redisTemplate.expire(Key, 30, TimeUnit.SECONDS);
+
+        //4.更新缓存
+        String pictureVoPageStr = JSONUtil.toJsonStr(pictureVoPage);
+        //4.1 更新本地缓存
+        LOCAL_CACHE.put(localKey, pictureVoPageStr);
+        //4.2 更新redis缓存
+        // 设置过期时间， 5 - 10 分钟，防止缓存雪崩
+        int cacheTime = 300 + RandomUtil.randomInt(0,300);
+        stringStringValueOperations.set(redisKey, pictureVoPageStr,cacheTime,TimeUnit.SECONDS);
         return pictureVoPage;
     }
 

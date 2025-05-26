@@ -1,5 +1,6 @@
 package com.sean.synovision.manager;
 
+import cn.hutool.core.io.FileUtil;
 import com.qcloud.cos.COSClient;
 import com.qcloud.cos.exception.CosClientException;
 import com.qcloud.cos.exception.CosServiceException;
@@ -13,6 +14,8 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author sean
@@ -62,7 +65,26 @@ public class CosManager {
             throws CosClientException, CosServiceException {
         PutObjectRequest putObjectRequest = new PutObjectRequest(cosConfig.getBucketName(), key, file);
         PicOperations picOperations = new PicOperations();
+        //设置获取文件信息
         picOperations.setIsPicInfo(1);
+        //文件压缩(转为 webp格式) - 添加规则
+        List<PicOperations.Rule> ruleList = new ArrayList<>();
+        String webpKey = FileUtil.mainName(key) + ".webp";
+        PicOperations.Rule rule = new PicOperations.Rule();
+        rule.setFileId(webpKey);
+        rule.setRule("imageMogr2/format/webp");
+        rule.setBucket(cosConfig.getBucketName());
+        ruleList.add(rule);
+        //添加缩放规则 - 文件大小大于 20KB 才可以进行缩放【在主页展示缩略图】
+        if (file.length() > 2 * 1024) {
+            String thumbnailKey = FileUtil.mainName(key) + "_thumbnail." + FileUtil.getSuffix(key);
+            PicOperations.Rule thumbnailRule = new PicOperations.Rule();
+            thumbnailRule.setFileId(thumbnailKey);
+            thumbnailRule.setRule(String.format("imageMogr2/thumbnail/%sx%s",256,256));
+            thumbnailRule.setBucket(cosConfig.getBucketName());
+            ruleList.add(thumbnailRule);
+        }
+        picOperations.setRules(ruleList);
         putObjectRequest.setPicOperations(picOperations);
         return cosClient.putObject(putObjectRequest);
     }

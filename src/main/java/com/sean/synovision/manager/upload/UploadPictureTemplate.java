@@ -1,12 +1,15 @@
 package com.sean.synovision.manager.upload;
 
+import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.NumberUtil;
 import com.qcloud.cos.COSClient;
 import com.qcloud.cos.model.GeneratePresignedUrlRequest;
 import com.qcloud.cos.model.PutObjectResult;
+import com.qcloud.cos.model.ciModel.persistence.CIObject;
 import com.qcloud.cos.model.ciModel.persistence.ImageInfo;
+import com.qcloud.cos.model.ciModel.persistence.ProcessResults;
 import com.sean.synovision.config.CosConfig;
 import com.sean.synovision.exception.BussinessException;
 import com.sean.synovision.exception.ErrorCode;
@@ -19,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -66,6 +70,21 @@ public abstract class UploadPictureTemplate {
             //5. 返回封装结果
             //5.1 获取图片信息结果
             ImageInfo imageInfo = putObjectResult.getCiUploadResult().getOriginalInfo().getImageInfo();
+            // 获取处理后的结果
+            ProcessResults processResults = putObjectResult.getCiUploadResult().getProcessResults();
+            List<CIObject> pictureList = processResults.getObjectList();
+            if (CollectionUtil.isNotEmpty(pictureList)) {
+                // 获取压缩后的图片信息（webp格式的文件）
+                CIObject picture = pictureList.get(0);
+                // 如果缩略图不存在，则默认等于压缩图
+                CIObject thumbnailPicture = picture;
+                if (pictureList.size() > 1) {
+                    // 获取缩略后的图片信息
+                    thumbnailPicture = pictureList.get(1);
+                }
+                return buildResult(originalFilename, picture,thumbnailPicture);
+            }
+
             //5.2 返回封装结果
             return buildResult(imageInfo, filePath, originalFilename, file);
         } catch (Exception e) {
@@ -97,6 +116,37 @@ public abstract class UploadPictureTemplate {
 
     /**
      * 封装上传结果
+     *
+     * @param originalFilename 原始文件名
+     * @param picture webp 文件信息
+     * @param thumbnailPicture 缩略图文件信息
+     * @return
+     */
+    private UploadPictureResult buildResult(String originalFilename, CIObject picture, CIObject thumbnailPicture) {
+        Integer picWidth = picture.getWidth();
+        Integer picHeight = picture.getHeight();
+        double picScale = NumberUtil.round(picWidth * 1.0 / picHeight, 2).doubleValue();
+        Integer size = picture.getSize();
+        String format = picture.getFormat();
+
+
+        UploadPictureResult uploadPictureResult = new UploadPictureResult();
+        //设置压缩后的原图地址
+        uploadPictureResult.setUrl(cosConfig.getHost() + "/" + picture.getKey());
+        //设置缩略后的原图地址
+        uploadPictureResult.setThumbnailUrl(cosConfig.getHost() + "/" + thumbnailPicture.getKey());
+        uploadPictureResult.setPicName(FileUtil.mainName(originalFilename));
+        uploadPictureResult.setPicSize(size);
+        uploadPictureResult.setPicWidth(picWidth);
+        uploadPictureResult.setPicHeight(picHeight);
+        uploadPictureResult.setPicScale(picScale);
+        uploadPictureResult.setPicFormat(format);
+
+        return uploadPictureResult;
+    }
+
+    /**
+     * 封装上传结果
      * @param imageInfo
      * @param filePath
      * @param originalFilename
@@ -110,11 +160,9 @@ public abstract class UploadPictureTemplate {
         int picHeight = imageInfo.getHeight();
         double picScale = NumberUtil.round(picWidth * 1.0 / picHeight, 2).doubleValue();
 
-        // 生成预签名 URL
-        String accessUrl = getPresignedUrl(filePath);
 
         UploadPictureResult uploadPictureResult = new UploadPictureResult();
-        uploadPictureResult.setUrl(accessUrl);
+        uploadPictureResult.setUrl(cosConfig.getHost() + "/" + filePath);
         uploadPictureResult.setPicName(FileUtil.mainName(originalFilename));
         uploadPictureResult.setPicSize(FileUtil.size(file));
         uploadPictureResult.setPicWidth(picWidth);
@@ -145,6 +193,7 @@ public abstract class UploadPictureTemplate {
      * @param filePath
      * @return
      */
+    @Deprecated
     public String getPresignedUrl(String filePath) {
         // 使用腾讯云 COS 的 SDK 生成预签名 URL
         GeneratePresignedUrlRequest request = new GeneratePresignedUrlRequest(cosConfig.getBucketName(), filePath);

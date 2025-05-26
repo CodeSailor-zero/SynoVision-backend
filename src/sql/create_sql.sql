@@ -63,3 +63,7 @@ alter table synovision.picture
     add column reviewTime datetime null comment '审核时间';
 
 create index idx_reviewStatus on synovision.picture(reviewStatus);
+
+-- 添加缩略图地址
+alter table synovision.picture
+    add column thumbnailUrl varchar(512) null  comment '缩略图 url';

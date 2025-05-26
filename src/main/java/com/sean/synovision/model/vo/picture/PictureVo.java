@@ -1,6 +1,7 @@
 package com.sean.synovision.model.vo.picture;
 
 import cn.hutool.json.JSONUtil;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.sean.synovision.model.entity.Picture;
 import com.sean.synovision.model.vo.user.UserVo;
 import lombok.Data;
@@ -25,6 +26,11 @@ public class PictureVo implements Serializable {
      * 图片地址
      */
     private String url;
+
+    /**
+     * 缩略图地址
+     */
+    private String thumbnailUrl;
 
     /**
      * 图片名称
