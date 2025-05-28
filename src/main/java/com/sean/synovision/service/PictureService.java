@@ -3,10 +3,8 @@ package com.sean.synovision.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.sean.synovision.model.dto.picture.PictureQueryRequest;
-import com.sean.synovision.model.dto.picture.PictureReviewRequest;
-import com.sean.synovision.model.dto.picture.PictureUploadByBatchRequest;
-import com.sean.synovision.model.dto.picture.PictureUploadRequest;
+import com.sean.synovision.common.DeleteRequest;
+import com.sean.synovision.model.dto.picture.*;
 import com.sean.synovision.model.entity.Picture;
 import com.sean.synovision.model.entity.User;
 import com.sean.synovision.model.vo.picture.PictureVo;
@@ -49,6 +47,10 @@ public interface PictureService extends IService<Picture> {
      */
     void doPictureReview(PictureReviewRequest pictureReviewRequest,User loginUser);
 
+    boolean editPicture(PictureEditRequest pictureEditRequest, User loginUser);
+
+    boolean deletePicture(Long id, User user);
+
     /**
      * 分页查询图片
      * @param pictureQueryRequest
@@ -69,7 +71,9 @@ public interface PictureService extends IService<Picture> {
 
     QueryWrapper<Picture> getQueryWrapper(PictureQueryRequest pictureQueryRequest);
 
-    PictureVo getPictureVo(Picture picture, HttpServletRequest request);
+    PictureVo getPictureVo(Picture picture, User user);
 
     Page<PictureVo> getPictureVoPage(Page<Picture> picturePage, HttpServletRequest request);
+
+    void checkPictureAuth(Picture picture, User loginUser);
 }

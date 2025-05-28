@@ -92,6 +92,12 @@ public class Picture implements Serializable {
     private Long userId;
 
     /**
+     * 空间id
+     */
+    @TableField("spaceId")
+    private Long spaceId;
+
+    /**
      * 是否审核，0 - 待审核，1 - 通过，2 - 未通过
      */
     @TableField("reviewStatus")
