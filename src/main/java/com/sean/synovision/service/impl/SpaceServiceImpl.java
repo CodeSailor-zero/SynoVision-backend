@@ -80,7 +80,7 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
                 boolean exists = this.lambdaQuery()
                         .eq(Space::getUserId, userId)
                         .exists();
-                ThrowUtill.throwIf(!exists, ErrorCode.NOT_FOUND_ERROR, "一个用户只能有一个私密空间");
+                ThrowUtill.throwIf(exists, ErrorCode.NOT_FOUND_ERROR, "一个用户只能有一个私密空间");
                 // 2.直接写入数据库
                 boolean result = this.save(space);
                 ThrowUtill.throwIf(!result, ErrorCode.OPERATION_ERROR, "创建空间失败");
@@ -129,7 +129,7 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
         }
         spaceQueryWrapper.eq(ObjectUtil.isNotNull(id), "id", id);
         spaceQueryWrapper.eq(ObjectUtil.isNotEmpty(userId), "userId", userId);
-        spaceQueryWrapper.like(StrUtil.isNotBlank(spaceName), "name", spaceName);
+        spaceQueryWrapper.like(StrUtil.isNotBlank(spaceName), "spaceName", spaceName);
         spaceQueryWrapper.eq(ObjectUtil.isNotEmpty(spaceLevel), "spaceLevel", spaceLevel);
         spaceQueryWrapper.orderBy(StrUtil.isNotEmpty(sortOrder), sortOrder.equals("ascend"), sortField);
         return spaceQueryWrapper;

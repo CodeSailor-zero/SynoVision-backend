@@ -70,6 +70,8 @@ public abstract class UploadPictureTemplate {
             //5. 返回封装结果
             //5.1 获取图片信息结果
             ImageInfo imageInfo = putObjectResult.getCiUploadResult().getOriginalInfo().getImageInfo();
+            // 获取原始的图片 url
+            URL originalUrl = cosClient.getObjectUrl(cosConfig.getBucketName(), filePath);
             // 获取处理后的结果
             ProcessResults processResults = putObjectResult.getCiUploadResult().getProcessResults();
             List<CIObject> pictureList = processResults.getObjectList();
@@ -82,7 +84,7 @@ public abstract class UploadPictureTemplate {
                     // 获取缩略后的图片信息
                     thumbnailPicture = pictureList.get(1);
                 }
-                return buildResult(originalFilename, picture,thumbnailPicture);
+                return buildResult(originalFilename, picture,thumbnailPicture,originalUrl);
             }
 
             //5.2 返回封装结果
@@ -118,11 +120,12 @@ public abstract class UploadPictureTemplate {
      * 封装上传结果
      *
      * @param originalFilename 原始文件名
-     * @param picture webp 文件信息
+     * @param picture          webp 文件信息
      * @param thumbnailPicture 缩略图文件信息
+     * @param originalUrl
      * @return
      */
-    private UploadPictureResult buildResult(String originalFilename, CIObject picture, CIObject thumbnailPicture) {
+    private UploadPictureResult buildResult(String originalFilename, CIObject picture, CIObject thumbnailPicture, URL originalUrl) {
         Integer picWidth = picture.getWidth();
         Integer picHeight = picture.getHeight();
         double picScale = NumberUtil.round(picWidth * 1.0 / picHeight, 2).doubleValue();
@@ -131,10 +134,12 @@ public abstract class UploadPictureTemplate {
 
 
         UploadPictureResult uploadPictureResult = new UploadPictureResult();
-        //设置压缩后的原图地址
+        //设置压缩后的图地址
         uploadPictureResult.setUrl(cosConfig.getHost() + "/" + picture.getKey());
-        //设置缩略后的原图地址
+        //设置缩略后的图地址
         uploadPictureResult.setThumbnailUrl(cosConfig.getHost() + "/" + thumbnailPicture.getKey());
+        //设置原图地址
+        uploadPictureResult.setOriginalUrl(originalUrl.toString());
         uploadPictureResult.setPicName(FileUtil.mainName(originalFilename));
         uploadPictureResult.setPicSize(size);
         uploadPictureResult.setPicWidth(picWidth);

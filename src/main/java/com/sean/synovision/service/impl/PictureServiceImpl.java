@@ -157,6 +157,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         picture.setSpaceId(spaceId);
         picture.setUrl(uploadPictureResult.getUrl());
         picture.setThumbnailUrl(uploadPictureResult.getThumbnailUrl());
+        picture.setOriginalUrl(uploadPictureResult.getOriginalUrl());
         String picName = uploadPictureResult.getPicName();
         if (namePrefix != null) {
             picName = namePrefix + picName;
@@ -182,13 +183,15 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             // 保存图片信息到数据库
             boolean update = this.saveOrUpdate(picture);
             ThrowUtill.throwIf(!update, ErrorCode.OPERATION_ERROR);
-            // 更新空间的额度
-            boolean result = spaceService.lambdaUpdate()
-                    .eq(Space::getId, finalSpaceId)
-                    .setSql("totalSize = totalSize + " + picture.getPicSize())
-                    .setSql("totalCount = totalCount +" + 1)
-                    .update();
-            ThrowUtill.throwIf(!result, ErrorCode.OPERATION_ERROR,"额度更新失败");
+            if (finalSpaceId != null) {
+                // 更新空间的额度（公共空间不需要更新额度）
+                boolean result = spaceService.lambdaUpdate()
+                        .eq(Space::getId, finalSpaceId)
+                        .setSql("totalSize = totalSize + " + picture.getPicSize())
+                        .setSql("totalCount = totalCount +" + 1)
+                        .update();
+                ThrowUtill.throwIf(!result, ErrorCode.OPERATION_ERROR,"额度更新失败");
+            }
             return picture;
         });
         // todo 如果更新图片，可以删除cos的原来图片
@@ -319,6 +322,19 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             // 操作数据库删除图片
             boolean result = this.removeById(id);
             ThrowUtill.throwIf(!result, ErrorCode.OPERATION_ERROR, "图片删除失败");
+            // 删除本地缓存
+            String localKeyCacheKey = String.format("SynoVision:listPictureVoPage:localKey:%s", loginUser.getId());
+            String loaclKey = LOCAL_CACHE.getIfPresent(localKeyCacheKey);
+            if (StrUtil.isNotBlank(loaclKey)) {
+                LOCAL_CACHE.invalidate(loaclKey);
+            }
+
+            // 删除redis缓存
+            ValueOperations<String, String> stringStringValueOperations = stringRedisTemplate.opsForValue();
+            String redisKey = stringStringValueOperations.get(localKeyCacheKey);
+            if (redisKey != null) {
+                stringRedisTemplate.delete(redisKey);
+            }
             // 释放空间的额度
             spaceService.lambdaUpdate()
                     .eq(Space::getId, oldPicture.getSpaceId())
@@ -338,12 +354,15 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
                 this.getQueryWrapper(pictureQueryRequest));
     }
 
+    //todo 当删除图片时，需要更新缓存
     @Override
     public Page<PictureVo> listPictureVoPage(PictureQueryRequest pictureQueryRequest, HttpServletRequest request) {
         // 1. redisson 分布式锁
         // 2. redisson 限流器【令牌】
         // 3. 缓存 √
 
+        User loginUser = userService.getLoginUser(request);
+        Long spaceId = pictureQueryRequest.getSpaceId();
         //1.查询redis缓存前，查询本地缓存
         String queryCondition = JSONUtil.toJsonStr(pictureQueryRequest);
         String localKey = DigestUtils.md5DigestAsHex(queryCondition.getBytes());
@@ -361,14 +380,12 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         }
 
         //3.查询数据库
-        Long spaceId = pictureQueryRequest.getSpaceId();
         if (spaceId == null) {
             //只允许查询公共图库的图片 和 查询已经通过的照片
             pictureQueryRequest.setReviewStatus(PictureReviewEnum.PASS.getValue());
             pictureQueryRequest.setNullSpaceId(true);
         } else {
             //查看私人空间图库
-            User loginUser = userService.getLoginUser(request);
             // 判断空间是否存在
             Space space = spaceService.getById(spaceId);
             ThrowUtill.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR,"当前空间不存在");
@@ -382,10 +399,15 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         String pictureVoPageStr = JSONUtil.toJsonStr(pictureVoPage);
         //4.1 更新本地缓存
         LOCAL_CACHE.put(localKey, pictureVoPageStr);
+        //缓存我们的 localKey，为删除缓存使用key做准备
+        String localKeyCacheKey = String.format("SynoVision:listPictureVoPage:localKey:%s", loginUser.getId());
+        LOCAL_CACHE.put(localKeyCacheKey, localKey);
         //4.2 更新redis缓存
         // 设置过期时间， 5 - 10 分钟，防止缓存雪崩
         int cacheTime = 300 + RandomUtil.randomInt(0, 300);
         stringStringValueOperations.set(redisKey, pictureVoPageStr, cacheTime, TimeUnit.SECONDS);
+        //缓存我们的 localKey，为删除缓存使用key做准备
+        stringStringValueOperations.set(localKeyCacheKey, redisKey, 10, TimeUnit.MINUTES);
         return pictureVoPage;
     }
 
@@ -531,7 +553,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             }
         } else {
             //为私人空间，仅空间本人可以操作图片
-            if (userId.equals(loginUserId)) {
+            if (!userId.equals(loginUserId)) {
                 throw new BussinessException(ErrorCode.NO_AUTH_ERROR, "无权限操作");
             }
         }

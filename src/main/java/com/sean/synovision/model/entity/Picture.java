@@ -32,6 +32,12 @@ public class Picture implements Serializable {
     private String thumbnailUrl;
 
     /**
+     * 原图片地址
+     */
+    @TableField("originalUrl")
+    private String originalUrl;
+
+    /**
      * 图片名称
      */
     @TableField("name")

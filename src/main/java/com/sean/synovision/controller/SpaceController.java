@@ -108,7 +108,7 @@ public class SpaceController {
         return ResultUtils.success(space);
     }
     @GetMapping("/get/vo")
-    public BaseResponse<SpaceVo> getPictureVo(Long id, HttpServletRequest request) {
+    public BaseResponse<SpaceVo> getSpaceVo(Long id, HttpServletRequest request) {
         ThrowUtill.throwIf(id == null || id < 0, ErrorCode.PARAMS_ERROR);
         User loginUser = userService.getLoginUser(request);
         Space space = spaceService.getById(id);

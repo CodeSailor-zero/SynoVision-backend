@@ -33,6 +33,11 @@ public class PictureVo implements Serializable {
     private String thumbnailUrl;
 
     /**
+     * 原始图片地址
+     */
+    private String originalUrl;
+
+    /**
      * 图片名称
      */
     private String name;
