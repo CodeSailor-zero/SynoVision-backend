@@ -3,6 +3,8 @@ package com.sean.synovision.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.sean.synovision.api.ailyunai.model.CreateOutPaintingTaskRequest;
+import com.sean.synovision.api.ailyunai.model.CreateOutPaintingTaskResponse;
 import com.sean.synovision.common.DeleteRequest;
 import com.sean.synovision.model.dto.picture.*;
 import com.sean.synovision.model.entity.Picture;
@@ -46,6 +48,13 @@ public interface PictureService extends IService<Picture> {
      * @param loginUser
      */
     void doPictureReview(PictureReviewRequest pictureReviewRequest,User loginUser);
+
+    /**
+     * 创建图片扩图任务
+     * @param createPictureOutPaintingTaskRequest
+     * @param loginUser
+     */
+    CreateOutPaintingTaskResponse createPictureOutPaintingTask(CreatePictureOutPaintingTaskRequest createPictureOutPaintingTaskRequest, User loginUser);
 
     boolean editPicture(PictureEditRequest pictureEditRequest, User loginUser);
 

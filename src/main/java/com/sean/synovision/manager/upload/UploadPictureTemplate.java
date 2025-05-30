@@ -56,6 +56,13 @@ public abstract class UploadPictureTemplate {
         UUID uuid = UUID.randomUUID();
         String originalFilename = getOriginalFilename(inputSource);
         String suffix = FileUtil.getSuffix(originalFilename);
+        // 对AI扩图做的处理，防止扩图生成的url有奇怪的后缀
+        //jpg?OSSAccessKeyId=xxxx&Expires=1748623748&Signature=xxxx
+        if (suffix.contains("OSSAccessKeyId") || suffix.contains("Signature")) {
+            int start = 0;
+            int end = suffix.indexOf("?");
+            suffix = suffix.substring(start, end);
+        }
         String uploadFileName = String.format("%s_%s.%s", date, uuid, suffix);
         //2.2 定义上传到腾讯云cos的路径：/用户传的前缀 + /文件名
         String filePath = String.format("/%s/%s", prefix, uploadFileName);

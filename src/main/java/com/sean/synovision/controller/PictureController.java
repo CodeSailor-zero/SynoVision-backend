@@ -4,6 +4,10 @@ package com.sean.synovision.controller;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sean.synovision.annotation.AuthCheck;
+import com.sean.synovision.api.ailyunai.AliYunAiApi;
+import com.sean.synovision.api.ailyunai.model.CreateOutPaintingTaskRequest;
+import com.sean.synovision.api.ailyunai.model.CreateOutPaintingTaskResponse;
+import com.sean.synovision.api.ailyunai.model.GetOutPaintingTaskResponse;
 import com.sean.synovision.common.BaseResponse;
 import com.sean.synovision.common.DeleteRequest;
 import com.sean.synovision.costant.UserConstant;
@@ -52,6 +56,9 @@ public class PictureController {
 
     @Resource
     private TagService tagService;
+
+    @Resource
+    private AliYunAiApi aliYunAiApi;
 
     // region 业务操作
 
@@ -194,5 +201,22 @@ public class PictureController {
                 })
                 .collect(Collectors.toList());
         return ResultUtils.success(spaceLevelList);
+    }
+
+    @PostMapping("/out_painting/create_task")
+    public BaseResponse<CreateOutPaintingTaskResponse> createOutPaintingTask(@RequestBody CreatePictureOutPaintingTaskRequest createPictureOutPaintingTaskRequest,
+                                                                             HttpServletRequest request) {
+        if (createPictureOutPaintingTaskRequest == null || createPictureOutPaintingTaskRequest.getPictureId() == null) {
+            throw new BussinessException(ErrorCode.PARAMS_ERROR, "参数不能为空");
+        }
+        User loginUser = userService.getLoginUser(request);
+        CreateOutPaintingTaskResponse createOutPaintingTaskResponse = pictureService.createPictureOutPaintingTask(createPictureOutPaintingTaskRequest, loginUser);
+        return ResultUtils.success(createOutPaintingTaskResponse);
+    }
+    @GetMapping("/out_painting/get_task")
+    public BaseResponse<GetOutPaintingTaskResponse> getOutPaintingTask(String taskId) {
+        ThrowUtill.throwIf(taskId == null, ErrorCode.PARAMS_ERROR);
+        GetOutPaintingTaskResponse task = aliYunAiApi.getOutPaintingTask(taskId);
+        return ResultUtils.success(task);
     }
 }

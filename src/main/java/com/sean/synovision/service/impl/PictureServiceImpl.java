@@ -11,6 +11,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.sean.synovision.api.ailyunai.AliYunAiApi;
+import com.sean.synovision.api.ailyunai.model.CreateOutPaintingTaskRequest;
+import com.sean.synovision.api.ailyunai.model.CreateOutPaintingTaskResponse;
 import com.sean.synovision.costant.UserConstant;
 import com.sean.synovision.exception.BussinessException;
 import com.sean.synovision.exception.ErrorCode;
@@ -80,6 +83,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 
     @Resource
     private TransactionTemplate transactionTemplate;
+
+    @Resource
+    private AliYunAiApi aliYunApi;
 
     private final Cache<String, String> LOCAL_CACHE = Caffeine.newBuilder()
             .initialCapacity(1024)
@@ -285,6 +291,24 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         picture.setReviewTime(DateUtil.date());
         boolean result = this.updateById(picture);
         ThrowUtill.throwIf(!result, ErrorCode.OPERATION_ERROR);
+    }
+
+    @Override
+    public CreateOutPaintingTaskResponse createPictureOutPaintingTask(CreatePictureOutPaintingTaskRequest createPictureOutPaintingTaskRequest, User loginUser) {
+        // 1. 获取图片信息
+        Long pictureId = createPictureOutPaintingTaskRequest.getPictureId();
+        Picture picture = this.getById(pictureId);
+        ThrowUtill.throwIf(picture == null, ErrorCode.PICTURE_NOT_EXIST);
+        // 2.校验权限
+        this.checkPictureAuth(picture, loginUser);
+        // 3. 创建扩图任务
+        CreateOutPaintingTaskRequest createOutPaintingTaskRequest = new CreateOutPaintingTaskRequest();
+        CreateOutPaintingTaskRequest.Input input = new CreateOutPaintingTaskRequest.Input();
+        input.setImageUrl(picture.getUrl());
+        createOutPaintingTaskRequest.setInput(input);
+        createOutPaintingTaskRequest.setParameters(createPictureOutPaintingTaskRequest.getParam());
+        //创建任务
+        return aliYunApi.createOutPaintingTask(createOutPaintingTaskRequest);
     }
     // endregion
 

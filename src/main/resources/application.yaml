@@ -45,5 +45,14 @@ knife4j:
         api-rule: package
         api-rule-resources:
           - com.sean.synovision.controller
-
+# Cos配置
+cos:
+  client:
+    host: xxx
+    secretId: xxxx
+    secretKey: xxx
+    region: xxx
+    bucketName: xxx
+aliYunAi:
+  apiKey: xxx
 
