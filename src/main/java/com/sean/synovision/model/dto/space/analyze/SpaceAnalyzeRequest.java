@@ -1,4 +1,4 @@
-package com.sean.synovision.model.dto.analyze;
+package com.sean.synovision.model.dto.space.analyze;
 
 import lombok.Data;
 

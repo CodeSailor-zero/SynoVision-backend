@@ -58,6 +58,8 @@ public interface PictureService extends IService<Picture> {
 
     boolean editPicture(PictureEditRequest pictureEditRequest, User loginUser);
 
+    void deletePictureInCos(String url, String thumbnailUrl, String originalUrl,Long spaceId);
+
     boolean deletePicture(Long id, User user);
 
     /**
@@ -85,4 +87,6 @@ public interface PictureService extends IService<Picture> {
     Page<PictureVo> getPictureVoPage(Page<Picture> picturePage, HttpServletRequest request);
 
     void checkPictureAuth(Picture picture, User loginUser);
+
+    boolean deletePictureByAdmin(Long id, User loginUser);
 }

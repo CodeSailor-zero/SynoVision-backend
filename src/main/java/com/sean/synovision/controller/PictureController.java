@@ -106,6 +106,18 @@ public class PictureController {
     // endregion
 
     //region 增删改查
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @PostMapping("/delete/admin")
+    public BaseResponse<Boolean> deletePictureByAdmin(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
+        ThrowUtill.throwIf(deleteRequest == null, ErrorCode.PARAMS_ERROR);
+        Long id = deleteRequest.getId();
+        ThrowUtill.throwIf(id == null || id < 0, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        userService.isAdmin(loginUser);
+        boolean result = pictureService.deletePictureByAdmin(id, loginUser);
+        return ResultUtils.success(result);
+    }
+
     @PostMapping("/delete")
     public BaseResponse<Boolean> deletePicture(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
         ThrowUtill.throwIf(deleteRequest == null, ErrorCode.PARAMS_ERROR);

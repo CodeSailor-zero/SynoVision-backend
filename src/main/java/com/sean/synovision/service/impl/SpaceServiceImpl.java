@@ -10,11 +10,9 @@ import com.sean.synovision.exception.BussinessException;
 import com.sean.synovision.exception.ErrorCode;
 import com.sean.synovision.model.dto.space.SpaceAddRequest;
 import com.sean.synovision.model.dto.space.SpaceQueryRequest;
-import com.sean.synovision.model.entity.Picture;
 import com.sean.synovision.model.entity.Space;
 import com.sean.synovision.model.entity.User;
 import com.sean.synovision.model.enums.SpaceLevelEnum;
-import com.sean.synovision.model.vo.picture.PictureVo;
 import com.sean.synovision.model.vo.space.SpaceVo;
 import com.sean.synovision.model.vo.user.UserVo;
 import com.sean.synovision.service.SpaceService;
@@ -27,7 +25,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -186,6 +183,19 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
             if (maxCount == null) {
                 space.setMaxCount(spaceLevelEnum.getMaxCount());
             }
+        }
+    }
+
+    /**
+     * 校验空间权限
+     * @param loginUser
+     * @param space
+     */
+    @Override
+    public void checkSpaceAuth(User loginUser, Space space) {
+        // 仅本人或管理员有权限
+        if(!space.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser)) {
+            throw new BussinessException(ErrorCode.NO_AUTH_ERROR,"没有权限");
         }
     }
     // endregion

@@ -30,6 +30,16 @@
         <result property="isDelete" column="isDelete" jdbcType="TINYINT"/>
     </resultMap>
 
+    <!-- 物理删除 -->
+    <delete id="deletePicture">
+        DELETE FROM synovision.picture WHERE isDelete = 1
+    </delete>
+
+<!--   select url, thumbnailUrl, originalUrl from picture where isDelete = 1-->
+    <select id="selectDeletedPictureUrls" resultType="map">
+        SELECT id,url,thumbnailUrl,originalUrl,spaceId FROM synovision.picture WHERE isDelete = 1
+    </select>
+
     <sql id="Base_Column_List">
         id,url,thumbnailUrl,originalUrl,`name`,
         introduction,category,tags,

@@ -1,15 +1,14 @@
 package com.sean.synovision.controller;
 
-import cn.hutool.json.JSONUtil;
+import cn.hutool.core.collection.CollectionUtil;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sean.synovision.annotation.AuthCheck;
 import com.sean.synovision.common.BaseResponse;
 import com.sean.synovision.common.DeleteRequest;
 import com.sean.synovision.costant.UserConstant;
-import com.sean.synovision.exception.BussinessException;
 import com.sean.synovision.exception.ErrorCode;
 import com.sean.synovision.exception.ResultUtils;
-import com.sean.synovision.model.dto.picture.*;
 import com.sean.synovision.model.dto.space.SpaceAddRequest;
 import com.sean.synovision.model.dto.space.SpaceEditRequest;
 import com.sean.synovision.model.dto.space.SpaceQueryRequest;
@@ -17,24 +16,20 @@ import com.sean.synovision.model.dto.space.SpaceUpdateRequest;
 import com.sean.synovision.model.entity.Picture;
 import com.sean.synovision.model.entity.Space;
 import com.sean.synovision.model.entity.User;
-import com.sean.synovision.model.vo.picture.PictureTagCategeoy;
-import com.sean.synovision.model.vo.picture.PictureVo;
 import com.sean.synovision.model.vo.space.SpaceVo;
 import com.sean.synovision.service.PictureService;
 import com.sean.synovision.service.SpaceService;
-import com.sean.synovision.service.TagService;
 import com.sean.synovision.service.UserService;
 import com.sean.synovision.utill.ThrowUtill;
 import org.springframework.beans.BeanUtils;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * @author sean
@@ -47,6 +42,9 @@ public class SpaceController {
     private UserService userService;
     @Resource
     private PictureService pictureService;
+
+    @Resource
+    private TransactionTemplate transactionTemplate;
 
     @Resource
     private SpaceService spaceService;
@@ -69,14 +67,24 @@ public class SpaceController {
         Space oldSpace = spaceService.getById(id);
         ThrowUtill.throwIf(oldSpace == null, ErrorCode.PARAMS_ERROR, "当前空间不存在");
         //权限校验
-        Long oldSpaceUserId = oldSpace.getUserId();
-        Long loginUserId = loginUser.getId();
-        boolean isAdmin = userService.isAdmin(loginUser);
-        if (!isAdmin && !loginUserId.equals(oldSpaceUserId)) {
-            throw new BussinessException(ErrorCode.NO_AUTH_ERROR, "无权限删除空间");
-        }
-        boolean result = spaceService.removeById(id);
-        ThrowUtill.throwIf(!result, ErrorCode.OPERATION_ERROR, "空间删除失败");
+        spaceService.checkSpaceAuth(loginUser, oldSpace);
+        //查询与空间关联的图片
+        QueryWrapper<Picture> pictureQueryWrapper = new QueryWrapper<Picture>()
+                .select("id")
+                .eq("spaceId", id);
+        List<Long> pictureIdList = pictureService.list(pictureQueryWrapper)
+                .stream()
+                .map(Picture::getId)
+                .collect(Collectors.toList());
+        ThrowUtill.throwIf(CollectionUtil.isEmpty(pictureIdList), ErrorCode.SYSTEM_ERROR, "当前空间下没有图片，无需删除");
+        transactionTemplate.execute(status -> {
+            // 删除空间内部的所有图片。cos图片清理交给定时任务
+            boolean result = spaceService.removeById(id);
+            ThrowUtill.throwIf(!result, ErrorCode.OPERATION_ERROR, "空间删除失败");
+            boolean res = pictureService.removeByIds(pictureIdList);
+            ThrowUtill.throwIf(!res, ErrorCode.OPERATION_ERROR, "空间内部图片失败");
+            return null;
+        });
         return ResultUtils.success(true);
     }
 
@@ -88,7 +96,7 @@ public class SpaceController {
         BeanUtils.copyProperties(spaceUpdateRequest, space);
         //补充空间参数
         spaceService.fillSpaceBySpaceLevel(space);
-        spaceService.vaildSpace(space,false);
+        spaceService.vaildSpace(space, false);
         Space oldSpace = spaceService.getById(space.getId());
         ThrowUtill.throwIf(oldSpace == null, ErrorCode.PARAMS_ERROR, "当前空间不存在");
         //补充图片审核校验参数
@@ -107,6 +115,7 @@ public class SpaceController {
         ThrowUtill.throwIf(space == null, ErrorCode.PARAMS_ERROR, "当前空间不存在");
         return ResultUtils.success(space);
     }
+
     @GetMapping("/get/vo")
     public BaseResponse<SpaceVo> getSpaceVo(Long id, HttpServletRequest request) {
         ThrowUtill.throwIf(id == null || id < 0, ErrorCode.PARAMS_ERROR);
@@ -123,7 +132,7 @@ public class SpaceController {
     public BaseResponse<Page<Space>> listSpace(@RequestBody SpaceQueryRequest spaceQueryRequest) {
         int current = spaceQueryRequest.getCurrent();
         int size = spaceQueryRequest.getPageSize();
-        Page<Space> picturePage = spaceService.page(new Page<>(current,size),
+        Page<Space> picturePage = spaceService.page(new Page<>(current, size),
                 spaceService.getQueryWrapper(spaceQueryRequest));
         return ResultUtils.success(picturePage);
     }
@@ -146,16 +155,11 @@ public class SpaceController {
         spaceService.fillSpaceBySpaceLevel(space);
         space.setEditTime(new Date());
         //picture 参数校验
-        spaceService.vaildSpace(space,false);
+        spaceService.vaildSpace(space, false);
         Space oldSpace = spaceService.getById(space.getId());
         ThrowUtill.throwIf(oldSpace == null, ErrorCode.PARAMS_ERROR, "当前空间不存在");
         //权限校验
-        Long oldSpaceUserId = oldSpace.getUserId();
-        Long loginUserId = loginUser.getId();
-        boolean isAdmin = userService.isAdmin(loginUser);
-        if (!isAdmin && !loginUserId.equals(oldSpaceUserId)) {
-            throw new BussinessException(ErrorCode.NO_AUTH_ERROR, "无权限编辑空间");
-        }
+        spaceService.checkSpaceAuth(loginUser, space);
         boolean result = spaceService.updateById(space);
         ThrowUtill.throwIf(!result, ErrorCode.OPERATION_ERROR, "空间更新失败");
         return ResultUtils.success(true);
