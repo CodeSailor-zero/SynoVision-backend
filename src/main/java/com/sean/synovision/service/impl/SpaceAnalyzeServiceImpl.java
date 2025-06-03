@@ -11,7 +11,6 @@ import com.sean.synovision.mapper.SpaceMapper;
 import com.sean.synovision.model.dto.space.analyze.*;
 import com.sean.synovision.model.entity.Picture;
 import com.sean.synovision.model.entity.Space;
-import com.sean.synovision.model.entity.Tag;
 import com.sean.synovision.model.entity.User;
 import com.sean.synovision.model.vo.space.analyze.*;
 import com.sean.synovision.service.*;
@@ -243,6 +242,7 @@ public class SpaceAnalyzeServiceImpl extends ServiceImpl<SpaceMapper, Space>
         // 3.构建查询条件进行查询
         QueryWrapper<Space> queryWrapper = new QueryWrapper<>();
         queryWrapper.select("id", "spaceName", "userId", "totalSize")
+                .eq("id", spaceRankAnalyzeRequest.getSpaceId())
                 .orderByDesc("totalSize")
                 .last("limit " + spaceRankAnalyzeRequest.getTopNum());
         return spaceService.list(queryWrapper);

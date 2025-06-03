@@ -6,9 +6,7 @@ import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -21,6 +19,9 @@ import com.sean.synovision.config.CosConfig;
 import com.sean.synovision.costant.UserConstant;
 import com.sean.synovision.exception.BussinessException;
 import com.sean.synovision.exception.ErrorCode;
+import com.sean.synovision.manager.auth.SpaceUserAuthManager;
+import com.sean.synovision.manager.auth.StpKit;
+import com.sean.synovision.manager.auth.model.SpaceUserPermissionConstant;
 import com.sean.synovision.manager.upload.FileUploadPictureTemplateImpl;
 import com.sean.synovision.manager.upload.UploadPictureTemplate;
 import com.sean.synovision.manager.upload.UrlUploadPictureTemplateImpl;
@@ -97,6 +98,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     @Resource
     private CosConfig cosConfig;
 
+    @Resource
+    private SpaceUserAuthManager spaceUserAuthManager;
+
     private final Cache<String, String> LOCAL_CACHE = Caffeine.newBuilder()
             .initialCapacity(1024)
             .maximumSize(10_000L)
@@ -123,8 +127,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         if (spaceId != null) {
             Space space = spaceService.getById(spaceId);
             ThrowUtill.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR, "空间不存在");
-            //权限校验，只有当前空间主人可以上传图片
-            ThrowUtill.throwIf(!space.getUserId().equals(user.getId()), ErrorCode.NO_AUTH_ERROR, "用户权限不足");
+            //现在已经有团队空间了，不可以这样判断，改为统一的权限校验
+//            //权限校验，只有当前空间主人可以上传图片
+//            ThrowUtill.throwIf(!space.getUserId().equals(user.getId()), ErrorCode.NO_AUTH_ERROR, "用户权限不足");
             // 校验额度，当额度满时，我们允许用户再上传一张图片
             ThrowUtill.throwIf(space.getTotalCount() >= space.getMaxCount(), ErrorCode.SYSTEM_ERROR, "空间图片容量不足");
             ThrowUtill.throwIf(space.getTotalSize() >= space.getMaxSize(), ErrorCode.SYSTEM_ERROR, "空间图片数量不足");
@@ -134,10 +139,11 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         if (pictureId != null) {
             Picture oldPicture = this.baseMapper.selectById(pictureId);
             ThrowUtill.throwIf(oldPicture == null, ErrorCode.PICTURE_NOT_EXIST);
-            // 3.1 权限校验，用户不可以改其他人的图片，管理员随便
-            if (!user.getId().equals(oldPicture.getUserId()) && !UserConstant.ADMIN_ROLE.equals(user.getUserRole())) {
-                throw new BussinessException(ErrorCode.NO_AUTH_ERROR);
-            }
+            //现在已经有团队空间了，不可以这样判断，改为统一的权限校验
+//            // 3.1 权限校验，用户不可以改其他人的图片，管理员随便
+//            if (!user.getId().equals(oldPicture.getUserId()) && !UserConstant.ADMIN_ROLE.equals(user.getUserRole())) {
+//                throw new BussinessException(ErrorCode.NO_AUTH_ERROR);
+//            }
 
             // 3.2 用户更新图片，不指定spaceId，则默认为图片的spaceId
             Long oldSpaceId = oldPicture.getSpaceId();
@@ -200,11 +206,13 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         transactionTemplate.execute(status -> {
             // 7.在更新图片到数据库前，删除cos原有的图片
             Picture oldPicture = this.getById(pictureId);
+            if (oldPicture != null) {
+                String url = oldPicture.getUrl();//todo
+                String thumbnailUrl = oldPicture.getThumbnailUrl();
+                String originalUrl = oldPicture.getOriginalUrl();
+                this.deletePictureInCos(url, thumbnailUrl, originalUrl, finalSpaceId);
+            }
 
-            String url = oldPicture.getUrl();
-            String thumbnailUrl = oldPicture.getThumbnailUrl();
-            String originalUrl = oldPicture.getOriginalUrl();
-            this.deletePictureInCos(url, thumbnailUrl, originalUrl,finalSpaceId);
             // 保存图片信息到数据库
             boolean update = this.saveOrUpdate(picture);
             ThrowUtill.throwIf(!update, ErrorCode.OPERATION_ERROR);
@@ -318,7 +326,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         Picture picture = this.getById(pictureId);
         ThrowUtill.throwIf(picture == null, ErrorCode.PICTURE_NOT_EXIST);
         // 2.校验权限
-        this.checkPictureAuth(picture, loginUser);
+        //已经改为注解鉴权
+//        this.checkPictureAuth(picture, loginUser);
         // 3. 创建扩图任务
         CreateOutPaintingTaskRequest createOutPaintingTaskRequest = new CreateOutPaintingTaskRequest();
         CreateOutPaintingTaskRequest.Input input = new CreateOutPaintingTaskRequest.Input();
@@ -348,7 +357,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         Picture oldPicture = this.getById(picture.getId());
         ThrowUtill.throwIf(oldPicture == null, ErrorCode.PARAMS_ERROR, "当前图片不存在");
         //权限校验，并且更新图片
-        this.checkPictureAuth(oldPicture, loginUser);
+        //已经改为注解鉴权
+//        this.checkPictureAuth(oldPicture, loginUser);
         boolean result = this.updateById(picture);
         ThrowUtill.throwIf(!result, ErrorCode.OPERATION_ERROR, "图片更新失败");
         return true;
@@ -387,7 +397,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         String url = oldPicture.getUrl();
         String thumbnailUrl = oldPicture.getThumbnailUrl();
         String originalUrl = oldPicture.getOriginalUrl();
-        deletePictureInCos(url, thumbnailUrl, originalUrl,spaceId);
+        deletePictureInCos(url, thumbnailUrl, originalUrl, spaceId);
 
         return true;
     }
@@ -400,7 +410,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
      * @param originalUrl
      */
     @Override
-    public void deletePictureInCos(String url, String thumbnailUrl, String originalUrl,Long spaceId) {
+    public void deletePictureInCos(String url, String thumbnailUrl, String originalUrl, Long spaceId) {
         String urlKey = null;
         String thumbnailUrlKey = null;
         String originalUrlKey = null;
@@ -423,7 +433,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         Picture oldPicture = this.getById(id);
         ThrowUtill.throwIf(oldPicture == null, ErrorCode.PARAMS_ERROR, "当前图片不存在");
         //权限校验
-        this.checkPictureAuth(oldPicture, loginUser);
+        //已经改为注解鉴权
+//        this.checkPictureAuth(oldPicture, loginUser);
         Boolean results = transactionTemplate.execute(status -> {
             // 操作数据库删除图片
             boolean result = this.removeById(id);
@@ -459,7 +470,6 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
                 this.getQueryWrapper(pictureQueryRequest));
     }
 
-    //todo 当删除图片时，需要更新缓存
     @Override
     public Page<PictureVo> listPictureVoPage(PictureQueryRequest pictureQueryRequest, HttpServletRequest request) {
         // 1. redisson 分布式锁
@@ -491,11 +501,15 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             pictureQueryRequest.setNullSpaceId(true);
         } else {
             //查看私人空间图库
+            // 权限校验
+            boolean hasPermission = StpKit.SPACE.hasPermission(SpaceUserPermissionConstant.PICTURE_VIEW);
+            ThrowUtill.throwIf(!hasPermission, ErrorCode.NO_AUTH_ERROR, "当前用户没有权限");
             // 判断空间是否存在
             Space space = spaceService.getById(spaceId);
             ThrowUtill.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR, "当前空间不存在");
             // 只有空间创建者可以查询空间内的图片
-            ThrowUtill.throwIf(ObjectUtil.notEqual(space.getUserId(), loginUser.getId()), ErrorCode.NO_AUTH_ERROR, "当前用户没有权限");
+             //已经改为编程式注解
+//            ThrowUtill.throwIf(ObjectUtil.notEqual(space.getUserId(), loginUser.getId()), ErrorCode.NO_AUTH_ERROR, "当前用户没有权限");
         }
         Page<Picture> picturePage = listPicturePage(pictureQueryRequest);
         Page<PictureVo> pictureVoPage = this.getPictureVoPage(picturePage, request);
@@ -609,14 +623,23 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 
     @Override
     public PictureVo getPictureVo(Picture picture, User user) {
+        //实体类转Vo类
         PictureVo pictureVo = PictureVo.objToVo(picture);
-        Long spaceId = pictureVo.getSpaceId();
         UserVo userVo = userService.getUserVo(user);
         pictureVo.setUserVo(userVo);
+        Long spaceId = pictureVo.getSpaceId();
         //权限校验
+        Space space = null;
         if (spaceId != null) {
-            this.checkPictureAuth(picture, user);
+            //已经改为编程式鉴权
+//            this.checkPictureAuth(picture, user);
+            boolean hasPermission = StpKit.SPACE.hasPermission(SpaceUserPermissionConstant.PICTURE_VIEW);
+            ThrowUtill.throwIf(!hasPermission, ErrorCode.NO_AUTH_ERROR);
+            space = spaceService.getById(spaceId);
+            ThrowUtill.throwIf( space == null, ErrorCode.PARAMS_ERROR, "空间不存在");
         }
+        //获取权限列表
+        pictureVo.setParmissionList(spaceUserAuthManager.getPermissionList(space, user));
         return pictureVo;
     }
 

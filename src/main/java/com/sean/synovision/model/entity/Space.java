@@ -1,10 +1,10 @@
 package com.sean.synovision.model.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import lombok.Data;
 
 import java.io.Serializable;
 import java.util.Date;
-import lombok.Data;
 
 /**
  * 空间表
@@ -30,6 +30,12 @@ public class Space implements Serializable {
      */
     @TableField("spaceLevel")
     private Integer spaceLevel;
+
+    /**
+     * 空间等级 0-私有，1-团队
+     */
+    @TableField("spaceType")
+    private Integer spaceType;
 
     /**
      * 空间图片最大容量

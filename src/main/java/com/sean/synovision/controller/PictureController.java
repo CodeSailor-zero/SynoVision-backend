@@ -1,6 +1,7 @@
 package com.sean.synovision.controller;
 
 
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.sean.synovision.annotation.AuthCheck;
@@ -14,6 +15,8 @@ import com.sean.synovision.costant.UserConstant;
 import com.sean.synovision.exception.BussinessException;
 import com.sean.synovision.exception.ErrorCode;
 import com.sean.synovision.exception.ResultUtils;
+import com.sean.synovision.manager.auth.annotation.SaSpaceCheckPermission;
+import com.sean.synovision.manager.auth.model.SpaceUserPermissionConstant;
 import com.sean.synovision.model.dto.picture.*;
 import com.sean.synovision.model.dto.space.SpaceLevel;
 import com.sean.synovision.model.entity.Picture;
@@ -73,8 +76,8 @@ public class PictureController {
         return ResultUtils.success(true);
     }
 
-    //    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     @PostMapping("/upload")
+    @SaSpaceCheckPermission(value = SpaceUserPermissionConstant.PICTURE_UPLOAD)
     public BaseResponse<PictureVo> upload(
             @RequestPart("file") MultipartFile file,
             PictureUploadRequest pictureUploadRequest,
@@ -85,6 +88,7 @@ public class PictureController {
     }
 
     @PostMapping("/upload/url")
+    @SaSpaceCheckPermission(value = SpaceUserPermissionConstant.PICTURE_UPLOAD)
     public BaseResponse<PictureVo> uploadByUrl(@RequestBody PictureUploadRequest pictureUploadRequest,
                                                HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
@@ -103,6 +107,36 @@ public class PictureController {
         return ResultUtils.success(uploadCount);
     }
 
+    /**
+     * 生成AI扩图的任务
+     * @param createPictureOutPaintingTaskRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/out_painting/create_task")
+    @SaSpaceCheckPermission(value = SpaceUserPermissionConstant.PICTURE_EDIT)
+    public BaseResponse<CreateOutPaintingTaskResponse> createOutPaintingTask(@RequestBody CreatePictureOutPaintingTaskRequest createPictureOutPaintingTaskRequest,
+                                                                             HttpServletRequest request) {
+        if (createPictureOutPaintingTaskRequest == null || createPictureOutPaintingTaskRequest.getPictureId() == null) {
+            throw new BussinessException(ErrorCode.PARAMS_ERROR, "参数不能为空");
+        }
+        User loginUser = userService.getLoginUser(request);
+        CreateOutPaintingTaskResponse createOutPaintingTaskResponse = pictureService.createPictureOutPaintingTask(createPictureOutPaintingTaskRequest, loginUser);
+        return ResultUtils.success(createOutPaintingTaskResponse);
+    }
+
+    /**
+     * 查询AI扩图的任务
+     * @param taskId
+     * @return
+     */
+    @GetMapping("/out_painting/get_task")
+    public BaseResponse<GetOutPaintingTaskResponse> getOutPaintingTask(String taskId) {
+        ThrowUtill.throwIf(taskId == null, ErrorCode.PARAMS_ERROR);
+        GetOutPaintingTaskResponse task = aliYunAiApi.getOutPaintingTask(taskId);
+        return ResultUtils.success(task);
+    }
+
     // endregion
 
     //region 增删改查
@@ -119,6 +153,7 @@ public class PictureController {
     }
 
     @PostMapping("/delete")
+    @SaSpaceCheckPermission(value = SpaceUserPermissionConstant.PICTURE_DELETE)
     public BaseResponse<Boolean> deletePicture(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
         ThrowUtill.throwIf(deleteRequest == null, ErrorCode.PARAMS_ERROR);
         Long id = deleteRequest.getId();
@@ -147,8 +182,8 @@ public class PictureController {
         return ResultUtils.success(result);
     }
 
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     @GetMapping("/get")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<Picture> getPicture(Long id, HttpServletRequest request) {
         ThrowUtill.throwIf(id == null || id < 0, ErrorCode.PARAMS_ERROR);
         User loginUser = userService.getLoginUser(request);
@@ -181,6 +216,7 @@ public class PictureController {
     }
 
     @PostMapping("/edit")
+    @SaSpaceCheckPermission(value = SpaceUserPermissionConstant.PICTURE_EDIT)
     public BaseResponse<Boolean> editPicture(@RequestBody PictureEditRequest pictureEditRequest, HttpServletRequest request) {
         ThrowUtill.throwIf(pictureEditRequest == null || pictureEditRequest.getId() < 0, ErrorCode.PARAMS_ERROR);
         User loginUser = userService.getLoginUser(request);
@@ -215,20 +251,5 @@ public class PictureController {
         return ResultUtils.success(spaceLevelList);
     }
 
-    @PostMapping("/out_painting/create_task")
-    public BaseResponse<CreateOutPaintingTaskResponse> createOutPaintingTask(@RequestBody CreatePictureOutPaintingTaskRequest createPictureOutPaintingTaskRequest,
-                                                                             HttpServletRequest request) {
-        if (createPictureOutPaintingTaskRequest == null || createPictureOutPaintingTaskRequest.getPictureId() == null) {
-            throw new BussinessException(ErrorCode.PARAMS_ERROR, "参数不能为空");
-        }
-        User loginUser = userService.getLoginUser(request);
-        CreateOutPaintingTaskResponse createOutPaintingTaskResponse = pictureService.createPictureOutPaintingTask(createPictureOutPaintingTaskRequest, loginUser);
-        return ResultUtils.success(createOutPaintingTaskResponse);
-    }
-    @GetMapping("/out_painting/get_task")
-    public BaseResponse<GetOutPaintingTaskResponse> getOutPaintingTask(String taskId) {
-        ThrowUtill.throwIf(taskId == null, ErrorCode.PARAMS_ERROR);
-        GetOutPaintingTaskResponse task = aliYunAiApi.getOutPaintingTask(taskId);
-        return ResultUtils.success(task);
-    }
+
 }

@@ -1,7 +1,7 @@
 package com.sean.synovision.mapper;
 
-import com.sean.synovision.model.entity.Space;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.sean.synovision.model.entity.Space;
 
 /**
 * @author 24395

@@ -1,9 +1,7 @@
 package com.sean.synovision.model.vo.space.analyze;
 
-import com.sean.synovision.model.dto.space.analyze.SpaceAnalyzeRequest;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;

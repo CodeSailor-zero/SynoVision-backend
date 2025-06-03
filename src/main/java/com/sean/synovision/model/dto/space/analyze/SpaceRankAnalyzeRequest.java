@@ -12,6 +12,10 @@ import java.io.Serializable;
 @Data
 public class SpaceRankAnalyzeRequest implements Serializable {
     /**
+     * 空间id
+     */
+    private Long spaceId;
+    /**
      * 空间排行展示数
      */
     private Integer topNum = 10;

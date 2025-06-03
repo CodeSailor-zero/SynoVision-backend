@@ -1,13 +1,12 @@
 package com.sean.synovision.model.vo.space;
 
-import cn.hutool.json.JSONUtil;
-import com.sean.synovision.model.entity.Picture;
 import com.sean.synovision.model.entity.Space;
 import com.sean.synovision.model.vo.user.UserVo;
 import lombok.Data;
 import org.springframework.beans.BeanUtils;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -31,6 +30,11 @@ public class SpaceVo implements Serializable {
      * 空间等级 0-普通级，1-专业版，2-旗舰版
      */
     private Integer spaceLevel;
+
+    /**
+     * 空间等级 0-私有，1-团队
+     */
+    private Integer spaceType;
 
     /**
      * 空间图片最大容量
@@ -76,6 +80,11 @@ public class SpaceVo implements Serializable {
      * 创建空间用户信息
      */
     private UserVo userVo;
+
+    /**
+     *  权限列表
+     */
+    private List<String> parmissionList = new ArrayList<>();
 
     public static SpaceVo objToVo(Space space){
         if (space == null){

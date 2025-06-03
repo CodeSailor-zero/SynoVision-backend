@@ -1,23 +1,17 @@
 package com.sean.synovision;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.sean.synovision.mapper.PictureMapper;
-import com.sean.synovision.model.entity.Picture;
-import com.sean.synovision.service.PictureService;
 import org.mybatis.spring.annotation.MapperScan;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.scheduling.annotation.EnableScheduling;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.Resource;
+import org.apache.shardingsphere.spring.boot.ShardingSphereAutoConfiguration;
 
 
 @EnableAspectJAutoProxy(exposeProxy = true) //暴露代理
 @EnableScheduling
-@SpringBootApplication
+// 如果需要开启，需要修改部分接口的逻辑，将公共图库 spaceId 定义为 0，否则会出现问题
+@SpringBootApplication(exclude = {ShardingSphereAutoConfiguration.class}) //关闭分库分表的配置
 @MapperScan("com.sean.synovision.mapper")
 public class SynoVisionApplication {
 

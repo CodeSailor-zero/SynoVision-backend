@@ -1,13 +1,13 @@
 package com.sean.synovision.model.vo.picture;
 
 import cn.hutool.json.JSONUtil;
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.sean.synovision.model.entity.Picture;
 import com.sean.synovision.model.vo.user.UserVo;
 import lombok.Data;
 import org.springframework.beans.BeanUtils;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -106,6 +106,11 @@ public class PictureVo implements Serializable {
      * 上传用户信息
      */
     private UserVo userVo;
+
+    /**
+     *  权限列表
+     */
+    private List<String> parmissionList = new ArrayList<>();
 
     public static PictureVo objToVo(Picture picture){
         if (picture == null){

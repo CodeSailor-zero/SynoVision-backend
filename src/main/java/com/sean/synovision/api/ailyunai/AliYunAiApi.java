@@ -1,9 +1,6 @@
 package com.sean.synovision.api.ailyunai;
 
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.http.HttpRequest;
-import cn.hutool.http.HttpResponse;
-import cn.hutool.http.HttpUtil;
 import cn.hutool.json.JSONUtil;
 import com.sean.synovision.api.ailyunai.model.CreateOutPaintingTaskRequest;
 import com.sean.synovision.api.ailyunai.model.CreateOutPaintingTaskResponse;
@@ -11,7 +8,6 @@ import com.sean.synovision.api.ailyunai.model.GetOutPaintingTaskResponse;
 import com.sean.synovision.exception.BussinessException;
 import com.sean.synovision.exception.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -21,10 +17,6 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-
-import javax.net.ssl.SSLHandshakeException;
-import java.net.ConnectException;
-import java.net.SocketException;
 
 @Slf4j
 @Component

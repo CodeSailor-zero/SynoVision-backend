@@ -94,3 +94,22 @@ CREATE TABLE synovision.space
 ALTER TABLE synovision.picture
     ADD COLUMN spaceId BIGINT NULL COMMENT '空间id(为null，则代表图片在public区)';
 CREATE INDEX idx_spaceId ON synovision.picture (spaceId);
+
+-- 添加空间类型，私人和团队空间
+ALTER TABLE synovision.space
+    ADD COLUMN spaceType INT DEFAULT 0 NOT NULL COMMENT '空间类型，0 - 个人空间，1 - 团队空间';
+CREATE INDEX idx_spaceType ON synovision.space (spaceType);
+
+-- 空间成员表
+CREATE TABLE synovision.spaceMember
+(
+    id         BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT 'id',
+    spaceId    BIGINT   NOT NULL COMMENT '空间id',
+    userId     BIGINT   NOT NULL COMMENT '用户id',
+    spaceRole  VARCHAR(128)      DEFAULT 'viewer' NOT NULL COMMENT '角色，viewer(r--)/editor(rw)/admin(rwx)',
+    createTime DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updateTime DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '编辑时间',
+    UNIQUE KEY uk_spaceId_userId (spaceId, userId), -- 一个用户只能创建一个团队空间
+    INDEX idx_spaceId (spaceId),
+    INDEX idx_userId (userId)
+) COMMENT '空间成员表' COLLATE = utf8mb4_unicode_ci;

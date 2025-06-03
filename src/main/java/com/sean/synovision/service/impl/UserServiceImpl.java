@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.sean.synovision.costant.UserConstant;
 import com.sean.synovision.exception.BussinessException;
 import com.sean.synovision.exception.ErrorCode;
+import com.sean.synovision.manager.auth.StpKit;
 import com.sean.synovision.mapper.UserMapper;
 import com.sean.synovision.model.dto.user.UserQueryRequest;
 import com.sean.synovision.model.entity.User;
@@ -85,6 +86,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         User user = this.baseMapper.selectOne(userQueryWrapper);
         ThrowUtill.throwIf(user == null, ErrorCode.PARAMS_ERROR,"用户账号或密码错误");
         request.getSession().setAttribute(UserConstant.user_login_state, user);
+        //保存登录态到 Sa -Token，便于在空间鉴权使用
+        StpKit.SPACE.login( user.getId());
+       StpKit.SPACE.getSession().set(UserConstant.user_login_state, user);
         return this.getLoginUserVo(user);
     }
 
