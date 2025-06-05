@@ -5,6 +5,8 @@ import cn.hutool.json.JSONUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
+import com.sean.synovision.exception.BussinessException;
+import com.sean.synovision.exception.ErrorCode;
 import com.sean.synovision.manager.websocket.model.PictureEditActionEnum;
 import com.sean.synovision.manager.websocket.model.PictureEditMessageTypeEnum;
 import com.sean.synovision.manager.websocket.model.PictureEditRequestMessage;
@@ -12,7 +14,6 @@ import com.sean.synovision.manager.websocket.model.PictureEditResponseMessage;
 import com.sean.synovision.model.entity.User;
 import com.sean.synovision.service.UserService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -21,6 +22,8 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import javax.annotation.Resource;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -44,6 +47,12 @@ public class PictureEditHandler extends TextWebSocketHandler {
     // 保存所有连接的会话，key: pictureId, value: 用户会话集合
     private final Map<Long, Set<WebSocketSession>> pictureSessions = new ConcurrentHashMap<>();
 
+    // 保存所有连接的会话，key: userId, value: 用户会话集合
+    private final Map<Long, WebSocketSession> userSessions = new ConcurrentHashMap<>();
+
+    // 保存用户的发送消息，key: userId, value: 消息集合(只接收操作的消息)
+    private final Map<Long, List<PictureEditResponseMessage>> userMessages = new ConcurrentHashMap<>();
+
     /**
      * 连接建立成功
      *
@@ -55,9 +64,33 @@ public class PictureEditHandler extends TextWebSocketHandler {
         super.afterConnectionEstablished(session);
         // 保存会话到集合中
         User user = (User) session.getAttributes().get("user");
+        Long userId = (Long) session.getAttributes().get("userId");
         Long pictureId = (Long) session.getAttributes().get("pictureId");
         pictureSessions.putIfAbsent(pictureId, ConcurrentHashMap.newKeySet());
         pictureSessions.get(pictureId).add(session);
+        userSessions.put(userId, session);
+        // 取出编辑者的消息集合
+        // 1.  取出当前图片的编辑者
+        Long editUserId = pictureEditingUsers.get(pictureId);
+        // 2. 如果当前用户不是编辑者，则回放消息
+        if (editUserId != null && !editUserId.equals(userId)) {
+            List<PictureEditResponseMessage> pictureEditResponseMessages = userMessages.get(editUserId);
+            if (CollUtil.isEmpty(pictureEditResponseMessages)) {
+                return;
+            }
+            // 获取上一次 用户的session
+            WebSocketSession webSocketSession = userSessions.get(editUserId);
+            pictureEditResponseMessages.forEach(pictureEditResponseMessage -> {
+                try {
+                    //回放消息，推送给除去编辑者的其他用户
+                    broadcastToPicture(pictureId, pictureEditResponseMessage,webSocketSession);
+                } catch (IOException e) {
+                    log.error("回放消息失败: {}", pictureEditResponseMessage);
+                    throw new BussinessException(ErrorCode.OPERATION_ERROR, "回放消息失败");
+                }
+            });
+        }
+
         // 构造响应，发送加入编辑的消息通知
         PictureEditResponseMessage pictureEditResponseMessage = new PictureEditResponseMessage();
         pictureEditResponseMessage.setType(PictureEditMessageTypeEnum.INFO.getValue());
@@ -127,6 +160,8 @@ public class PictureEditHandler extends TextWebSocketHandler {
             pictureEditResponseMessage.setUserVo(userService.getUserVo(user));
             // 广播给所有用户
             broadcastToPicture(pictureId, pictureEditResponseMessage);
+            // 保存消息到 编辑用户消息列表
+            userMessages.computeIfAbsent(user.getId(), k -> new ArrayList<>()).add(pictureEditResponseMessage);
         }
     }
 
@@ -158,6 +193,9 @@ public class PictureEditHandler extends TextWebSocketHandler {
             pictureEditResponseMessage.setUserVo(userService.getUserVo(user));
             // 广播给除了当前客户端之外的其他用户，否则会造成重复编辑
             broadcastToPicture(pictureId, pictureEditResponseMessage, session);
+            //  保存用户消息
+            // 如果该用户还没有消息集合，则新建一个
+            userMessages.computeIfAbsent(user.getId(), k -> new ArrayList<>()).add(pictureEditResponseMessage);
         }
     }
 
@@ -209,6 +247,17 @@ public class PictureEditHandler extends TextWebSocketHandler {
             if (sessionSet.isEmpty()) {
                 pictureSessions.remove(pictureId);
             }
+        }
+        // 删除用户会话
+        WebSocketSession webSocketSession = userSessions.get(user.getId());
+        if (webSocketSession != null) {
+            userSessions.remove(user.getId());
+        }
+        // 删除用户的编辑记录
+        Long editingUserId = pictureEditingUsers.get(pictureId);
+        List<PictureEditResponseMessage> messageList = userMessages.get(editingUserId);
+        if (messageList != null) {
+            userMessages.remove(editingUserId);
         }
         // 通知其他用户，该用户已经离开编辑
         PictureEditResponseMessage pictureEditResponseMessage = new PictureEditResponseMessage();
